@@ -14,6 +14,7 @@ provider:
 
   environment:
     TODO_TABLE: TODO-${self:provider.stage}
+    TODO_INDEX_TABLE: TODO-Index
     IMAGES_S3_BUCKET: serverless-projectt-images-${self:provider.stage}
     SIGNED_URL_EXPIRATION: 300
   
@@ -24,12 +25,17 @@ provider:
         - dynamodb:PutItem
         - dynamodb:GetItem
         - dynamodb:DeleteItem
+        - dynamodb:Query
       Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODO_TABLE}
     - Effect: Allow
       Action:
         - s3:PutObject
         - s3:GetObject
       Resource: arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/*
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+      Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODO_TABLE}/index/${self:provider.environment.TODO_INDEX_TABLE}
 
 
 
@@ -46,6 +52,7 @@ functions:
           method: get
           path: todos
           cors: true
+          authorizer: Auth
           
 
   
@@ -109,11 +116,26 @@ resources:
         AttributeDefinitions:
           - AttributeName: todoId
             AttributeType: S
+          - AttributeName: userId
+            AttributeType: S
+          - AttributeName: createdAt
+            AttributeType: S
         KeySchema:
-          - AttributeName: todoId
+          - AttributeName: userId
             KeyType: HASH
+          - AttributeName: todoId
+            KeyType: RANGE
         BillingMode: PAY_PER_REQUEST
         TableName: ${self:provider.environment.TODO_TABLE}
+        LocalSecondaryIndexes:
+          - IndexName: ${self:provider.environment.TODO_INDEX_TABLE}
+            KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
     
     AttachmentsBucket:
       Type: AWS::S3::Bucket
