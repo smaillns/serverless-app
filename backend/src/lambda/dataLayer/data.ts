@@ -1,5 +1,8 @@
 import 'source-map-support/register'
 import * as AWS from 'aws-sdk'
+const AWSXRay = require('aws-xray-sdk');
+const XAWS = AWSXRay.captureAWS(AWS)
+
 import { DocumentClient } from 'aws-sdk/clients/dynamodb'
 import { TodoUpdate } from '../../models/TodoUpdate'
 
@@ -9,12 +12,11 @@ import { TodoUpdate } from '../../models/TodoUpdate'
 export class Data {
 
     constructor(
-        private readonly docClient: DocumentClient = new AWS.DynamoDB.DocumentClient(),
+        private readonly docClient: DocumentClient = new XAWS.DynamoDB.DocumentClient(),
         private readonly toDoTable = process.env.TODO_TABLE
 
     ) {
     }
-
 
     async updateToDo(userId: string, todoId: string, todoUpdate: TodoUpdate):Promise<TodoUpdate> {
 
