@@ -1,11 +1,8 @@
 import 'source-map-support/register'
-import * as AWS from 'aws-sdk'
 import { APIGatewayProxyEvent, APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda'
 import { UpdateTodoRequest } from '../../requests/UpdateTodoRequest'
 import { getUserId } from '../utils'
-
-const docClient =  new AWS.DynamoDB.DocumentClient()
-const toDOTable = process.env.TODO_TABLE
+import { updateToDo } from '../logicLayer/todo'
 
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   console.log('updating TODO item')
@@ -14,14 +11,17 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
 
   const userId = getUserId(event)
 
-  await docClient.put({
-      TableName: toDOTable,
-      Item: {
-        userId: userId,
-        todoId: todoId,  
-        ...updatedTodo
-        }
-    }).promise()
+  const response = await updateToDo( userId, todoId, updatedTodo)
+  if (response == null)
+      return {
+        statusCode: 404,
+        headers: {
+            'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          error: 'TODO item does not exist'
+        })
+    }
 
   return {
       statusCode: 204,
@@ -32,6 +32,4 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
         updatedTodo
       })
   }
-  
-  return undefined
 }
